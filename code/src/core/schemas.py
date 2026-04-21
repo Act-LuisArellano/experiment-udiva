@@ -104,7 +104,8 @@ class ExperimentConfig:
     model_name: str = ""
     model_checkpoint: str = ""
     weights_path: str = ""       # local path for model weights cache
-    quantization: str = "none"   # "none", "4bit", "8bit"
+    quantization: str = "none"   # "none", "2bit", "4bit", "8bit"
+    model_load_kwargs: dict[str, Any] = field(default_factory=dict)
 
     # Data
     video_path: str = ""
@@ -134,6 +135,9 @@ class ExperimentConfig:
 
         resize_raw = data_cfg.get("resize")
         resize = tuple(resize_raw) if resize_raw else None
+        model_load_kwargs = model.get("load_kwargs") or {}
+        if not isinstance(model_load_kwargs, dict):
+            model_load_kwargs = {}
 
         return cls(
             experiment_type=exp.get("type", ""),
@@ -145,6 +149,7 @@ class ExperimentConfig:
             model_checkpoint=model.get("checkpoint", ""),
             weights_path=model.get("weights_path", ""),
             quantization=model.get("quantization", "none"),
+            model_load_kwargs=model_load_kwargs,
             video_path=data_cfg.get("video_path", ""),
             chunk_duration=data_cfg.get("chunk_duration", 3.0),
             chunk_stride=data_cfg.get("chunk_stride", 3.0),
@@ -155,4 +160,3 @@ class ExperimentConfig:
             output_path=output.get("path", "results/output.json"),
             extra=data.get("extra", {}),
         )
-

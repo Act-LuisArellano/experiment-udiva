@@ -117,10 +117,13 @@ def run_experiment(config: ExperimentConfig, use_mock: bool = False):
         print(f"Loading model: {config.model_checkpoint} (quantization={config.quantization})")
         if config.weights_path:
             print(f"Weights cache: {config.weights_path}")
+        if config.model_load_kwargs:
+            print(f"Model load kwargs: {config.model_load_kwargs}")
         model.load(
             config.model_checkpoint,
             quantization=config.quantization,
             weights_path=config.weights_path,
+            **config.model_load_kwargs,
         )
 
     # 3. Validate compatibility (hard error on mismatch)
@@ -206,4 +209,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

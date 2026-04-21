@@ -9,10 +9,15 @@ experiment:
 model:
   name: qwen_omni
   checkpoint: "auto"
-  weights_path: "../data-slow/models/Qwen/qwen2.5-omni-light"
-  quantization: "2bit"
+  weights_path: "../data-slow/models/Qwen/Qwen2.5-Omni-3B"
+  quantization: "none"
   load_kwargs:
-    profile: "light"
+    profile: "server"
+    device_map: "auto"
+    max_memory:
+      cuda:0: "46GiB"
+      cuda:1: "46GiB"
+    torch_dtype: "float16"
 
 data:
   video_path: "../data-fast/videos/vid_00500-00660-remote.mp4"
@@ -26,4 +31,4 @@ execution:
 
 output:
   format: json
-  path: "../data-slow/results/qwen_vqa_output.json"
+  path: "../data-slow/results/qwen_vqa_output_server.json"

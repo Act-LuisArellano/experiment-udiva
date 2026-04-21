@@ -138,8 +138,25 @@ class TestExperimentConfig:
         assert config.labels == []
         assert config.weights_path == ""
         assert config.quantization == "none"
+        assert config.model_load_kwargs == {}
         assert config.resize is None
         assert config.backend == "single_device"
+
+    def test_from_dict_model_load_kwargs(self):
+        config = ExperimentConfig.from_dict(
+            {
+                "model": {
+                    "load_kwargs": {
+                        "profile": "server",
+                        "device_map": "auto",
+                    }
+                }
+            }
+        )
+        assert config.model_load_kwargs == {
+            "profile": "server",
+            "device_map": "auto",
+        }
 
     def test_from_dict_no_resize(self):
         config = ExperimentConfig.from_dict({"data": {"resize": None}})
