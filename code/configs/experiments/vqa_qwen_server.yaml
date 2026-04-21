@@ -15,8 +15,8 @@ model:
     profile: "server"
     device_map: "auto"
     max_memory:
-      cuda:0: "46GiB"
-      cuda:1: "46GiB"
+      0: "46GiB"
+      1: "46GiB"
     torch_dtype: "float16"
 
 data:

@@ -95,7 +95,7 @@ class QwenOmniAdapter(BaseModelAdapter):
 
         max_memory = kwargs.pop("max_memory", None)
         if max_memory is not None:
-            model_kwargs["max_memory"] = max_memory
+            model_kwargs["max_memory"] = self._normalize_max_memory_keys(max_memory)
 
         attn_implementation = kwargs.pop("attn_implementation", None)
         if attn_implementation:
@@ -152,6 +152,32 @@ class QwenOmniAdapter(BaseModelAdapter):
             "fp32": torch.float32,
         }
         return mapping.get(dtype_value.lower(), dtype_value)
+
+    def _normalize_max_memory_keys(self, max_memory: dict) -> dict:
+        """Normalize max_memory GPU keys for accelerate.
+
+        accelerate expects GPU devices as integer indices (e.g. 0, 1).
+        This helper accepts user-friendly keys like "cuda:0" or "1".
+        """
+        if not isinstance(max_memory, dict):
+            return max_memory
+        normalized = {}
+        for key, value in max_memory.items():
+            if isinstance(key, int):
+                normalized[key] = value
+                continue
+            if isinstance(key, str):
+                lowered = key.strip().lower()
+                if lowered.startswith("cuda:"):
+                    suffix = lowered.split(":", 1)[1]
+                    if suffix.isdigit():
+                        normalized[int(suffix)] = value
+                        continue
+                if lowered.isdigit():
+                    normalized[int(lowered)] = value
+                    continue
+            normalized[key] = value
+        return normalized
 
     def predict(self, bundle: ModalityBundle, request: ModelRequest) -> RawModelOutput:
         """Run inference: multimodal inputs → generated text."""

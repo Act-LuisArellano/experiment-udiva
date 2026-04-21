@@ -128,10 +128,32 @@ class TestQwenOmniAdapter:
         assert captured["model_checkpoint"] == "Qwen/Qwen2.5-Omni-3B"
         assert captured["model_kwargs"]["device_map"] == "auto"
         assert captured["model_kwargs"]["max_memory"] == {
-            "cuda:0": "46GiB",
-            "cuda:1": "46GiB",
+            0: "46GiB",
+            1: "46GiB",
         }
         assert "moved_to" not in captured
+
+    def test_normalize_max_memory_cuda_keys(self):
+        """cuda:N and numeric string keys should be converted to GPU indices."""
+        from src.models.qwen_omni import QwenOmniAdapter
+
+        adapter = QwenOmniAdapter()
+        normalized = adapter._normalize_max_memory_keys(
+            {
+                "cuda:0": "46GiB",
+                "cuda:1": "46GiB",
+                "2": "30GiB",
+                "cpu": "128GiB",
+                "disk": "200GiB",
+            }
+        )
+        assert normalized == {
+            0: "46GiB",
+            1: "46GiB",
+            2: "30GiB",
+            "cpu": "128GiB",
+            "disk": "200GiB",
+        }
 
     def test_build_messages_wraps_system_prompt_as_text_content(self):
         """Qwen chat template expects system content as a list of typed items."""
