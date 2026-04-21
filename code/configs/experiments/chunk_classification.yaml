@@ -1,0 +1,23 @@
+experiment:
+  type: chunk_classification
+  labels: ["talking", "building", "idle"]
+
+model:
+  name: gemma_vlm
+  checkpoint: "google/gemma-4-E2B"
+  weights_path: "../data-slow/models/Gemma/current-model-variation"
+  quantization: "2bit"   # 2-bit quantization for minimal memory usage
+
+data:
+  video_path: "../data-fast/videos/vid_00500-00660-remote.mp4"
+  chunk_duration: 3.0    # seconds per chunk
+  chunk_stride: 3.0      # no overlap
+  fps: 1.0               # frames per second (reduced to 1 for memory)
+  resize: [112, 112]     # resize frames to 112x112 for lower VRAM usage
+
+execution:
+  backend: single_device
+
+output:
+  format: json
+  path: "../data-slow/results/chunk_classification_output.json"

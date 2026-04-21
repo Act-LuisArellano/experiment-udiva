@@ -1,0 +1,33 @@
+[project]
+name = "udiva-refactor"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "accelerate>=1.13.0",
+    "bitsandbytes>=0.49.2",
+    "numpy>=2.4.4",
+    "pandas>=3.0.2",
+    "pytest>=9.0.3",
+    "scikit-learn>=1.8.0",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "transformers>=5.5.4",
+    "pyyaml>=6.0.3",
+    "librosa>=0.11.0",
+    "torchaudio>=2.11.0",
+    "torchcodec>=0.11.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["code/tests"]
+pythonpath = ["code"]
+markers = [
+    "integration: marks tests requiring GPU or model download (deselect with '-m not integration')",
+]

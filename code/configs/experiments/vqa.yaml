@@ -1,0 +1,27 @@
+experiment:
+  type: vqa
+  prompt_file: "configs/prompts/vqa_prompt.py"
+  output_schema:               # optional: set to get structured JSON answers
+    fields:
+      action: "string"
+      objects: "list"
+
+model:
+  name: gemma_vlm
+  checkpoint: "google/gemma-4-E2B"
+  weights_path: "../data-slow/models/Gemma/current-model-variation"
+  quantization: "4bit"
+
+data:
+  video_path: "../data-fast/videos/vid_00500-00660-remote.mp4"
+  chunk_duration: 3.0
+  chunk_stride: 3.0
+  fps: 1.0
+  resize: [112, 112]
+
+execution:
+  backend: single_device
+
+output:
+  format: json
+  path: "../data-slow/results/vqa_output.json"

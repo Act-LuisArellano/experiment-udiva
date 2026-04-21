@@ -1,0 +1,27 @@
+experiment:
+  type: vqa
+  prompt_file: "configs/prompts/vqa_prompt.py"
+  output_schema:
+    fields:
+      action: "string"
+      objects: "list"
+
+model:
+  name: qwen_omni
+  checkpoint: "yujiepan/qwen2.5-omni-tiny-random"
+  weights_path: "../data-slow/models/Qwen/qwen2.5-omni-tiny-random"
+  quantization: "2bit"
+
+data:
+  video_path: "../data-fast/videos/vid_00500-00660-remote.mp4"
+  chunk_duration: 3.0
+  chunk_stride: 3.0
+  fps: 1.0
+  resize: [112, 112]
+
+execution:
+  backend: single_device
+
+output:
+  format: json
+  path: "../data-slow/results/qwen_vqa_output.json"
