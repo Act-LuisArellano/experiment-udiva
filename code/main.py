@@ -25,12 +25,14 @@ from src.core.schemas import ExperimentConfig, CanonicalPrediction
 from src.core.capabilities import validate_compatibility
 from src.core.registry import MODEL_REGISTRY, EXPERIMENT_REGISTRY, EXECUTION_REGISTRY
 from src.output.classification import ClassificationResult, ClassificationReport, save_report as save_classification_report
+from src.output.recognition import RecognitionResult, RecognitionReport, save_report as save_recognition_report
 from src.output.vqa import VQAResult, VQAReport, save_report as save_vqa_report
 
 # ── Import modules to trigger registry decorators ──────────────────────────
 import src.models.gemma_vlm  # noqa: F401 — registers "gemma_vlm"
 import src.models.qwen_omni  # noqa: F401 — registers "qwen_omni"
 import src.experiments.chunk_classification  # noqa: F401 — registers "chunk_classification"
+import src.experiments.recognition  # noqa: F401 — registers "recognition"
 import src.experiments.vqa  # noqa: F401 — registers "vqa"
 import src.execution.single_device  # noqa: F401 — registers "single_device"
 
@@ -89,6 +91,28 @@ def predictions_to_vqa_report(
     return VQAReport(video_path=video_path, results=results)
 
 
+def predictions_to_recognition_report(
+    predictions: list[CanonicalPrediction],
+    config: ExperimentConfig,
+) -> RecognitionReport:
+    """Convert canonical predictions to a recognition submission report."""
+    category = str(config.extra.get("recognition_category", "verbal")).strip().lower() or "verbal"
+    video_id = str(config.extra.get("recognition_video_id", "")).strip() or Path(config.video_path).stem
+
+    results = [
+        RecognitionResult(
+            segment_id=p.extra.get("segment_id", f"s_{p.chunk_index + 1:04d}"),
+            chunk_index=p.chunk_index,
+            chunk_start=p.chunk_start,
+            chunk_end=p.chunk_end,
+            events=p.extra.get("events", []),
+            raw_text=p.raw_text,
+        )
+        for p in predictions
+    ]
+    return RecognitionReport(category=category, video_id=video_id, results=results)
+
+
 def run_experiment(config: ExperimentConfig, use_mock: bool = False):
     """Execute a full experiment from config.
 
@@ -97,7 +121,7 @@ def run_experiment(config: ExperimentConfig, use_mock: bool = False):
         use_mock: If True, use a MockModelAdapter instead of real model.
 
     Returns:
-        ClassificationReport or VQAReport depending on experiment type.
+        ClassificationReport, VQAReport, or RecognitionReport depending on experiment type.
     """
     # 1. Resolve components from registries
     experiment_cls = EXPERIMENT_REGISTRY.get(config.experiment_type)
@@ -151,6 +175,10 @@ def run_experiment(config: ExperimentConfig, use_mock: bool = False):
         report = predictions_to_vqa_report(predictions, config.video_path)
         save_vqa_report(report, config.output_path)
         _print_vqa_summary(report)
+    elif config.experiment_type == "recognition":
+        report = predictions_to_recognition_report(predictions, config)
+        save_recognition_report(report, config.output_path)
+        _print_recognition_summary(report)
     else:
         report = predictions_to_classification_report(predictions, config.video_path)
         save_classification_report(report, config.output_path)
@@ -195,6 +223,23 @@ def _print_vqa_summary(report: VQAReport) -> None:
         print(f"    A: {answer_preview}")
         if r.formatted:
             print(f"    Formatted: {r.formatted}")
+
+
+def _print_recognition_summary(report: RecognitionReport) -> None:
+    """Print recognition-specific summary."""
+    summary = report.summary()
+    print(f"\n--- Recognition Summary ---")
+    print(f"Category: {report.category}")
+    print(f"Video ID: {report.video_id}")
+    print(f"Total segments: {summary['total_segments']}")
+    print(f"Total events: {summary['total_events']}")
+    print(f"Segments with events: {summary['segments_with_events']}")
+    print()
+    for result in report.results:
+        print(
+            f"  Segment {result.segment_id} [{result.chunk_start:.1f}s-{result.chunk_end:.1f}s]: "
+            f"{len(result.events)} event(s)"
+        )
 
 
 def main():

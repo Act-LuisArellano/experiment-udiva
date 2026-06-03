@@ -1,0 +1,27 @@
+experiment:
+  type: recognition
+
+model:
+  name: gemma_vlm
+  checkpoint: "google/gemma-4-E2B"
+  weights_path: "../data-slow/models/Gemma/current-model-variation"
+  quantization: "2bit"
+
+data:
+  video_path: "../../../data/mosaics/001080/001080_L_mosaic.mp4"
+  chunk_duration: 2.0
+  chunk_stride: 2.0
+  fps: 1.0
+  resize: [112, 112]
+
+execution:
+  backend: single_device
+
+output:
+  format: json
+  path: "../data-slow/results/recognition_nonverbal_output.json"
+
+extra:
+  recognition_category: nonverbal
+  recognition_video_id: "001080"
+  recognition_template_path: "configs/recognition/example_template.json"
