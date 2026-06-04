@@ -9,18 +9,19 @@ experiment:
 model:
   name: qwen_omni
   checkpoint: "auto"
-  weights_path: "../data-slow/models/Qwen/Qwen2.5-Omni-3B"
-  quantization: "none"
+  weights_path: "/data-slow/models/Qwen/Qwen3-Omni-30B-A3B-Instruct"
   load_kwargs:
     profile: "server"
     device_map: "auto"
     max_memory:
       0: "46GiB"
       1: "46GiB"
+      3: "46GiB"
+      4: "46GiB"
     torch_dtype: "float16"
 
 data:
-  video_path: "../data-fast/videos/vid_00500-00660-remote.mp4"
+  video_path: "/data-fast/videos/videos_test/frames_16/action_anticipation_test/videos/005013_L_mosaic/vid_00500-00580.mp4"
   chunk_duration: 3.0
   chunk_stride: 3.0
   fps: 1.0
