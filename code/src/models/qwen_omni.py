@@ -184,8 +184,11 @@ class QwenOmniAdapter(BaseModelAdapter):
         if not self._loaded:
             raise RuntimeError("Model not loaded. Call load() first.")
 
-        # Prepare images from frames
-        images = self._frames_to_pil(bundle.frames) if bundle.frames is not None else None
+        # Prepare images from frames. Experiments can raise the per-request image
+        # budget via request.extra["max_images"] (default 4); causal needs many
+        # timestamp-overlaid frames to localize a cause.
+        max_images = int(request.extra.get("max_images", 4)) if request else 4
+        images = self._frames_to_pil(bundle.frames, max_images=max_images) if bundle.frames is not None else None
 
         # Build messages with embedded PIL images (Qwen-specific)
         messages = self._build_messages(bundle, request, images)
@@ -229,9 +232,15 @@ class QwenOmniAdapter(BaseModelAdapter):
 
         inputs = self.processor(**processor_kwargs)
 
-        # Move to device
-        if self.device != "cuda":
-            inputs = {k: v.to(self.device) if hasattr(v, "to") else v for k, v in inputs.items()}
+        # Move inputs to the model's device. With device_map="auto" the input
+        # embedding lives on the first device (cuda:0), so moving to "cuda" is
+        # correct for both single-GPU and sharded loads. (Quantized loads used
+        # to rely on accelerate hooks for this; full-precision loads do not.)
+        target_device = getattr(self.model, "device", None) or self.device
+        inputs = {
+            k: v.to(target_device) if hasattr(v, "to") else v
+            for k, v in inputs.items()
+        }
 
         # Generate
         generate_kwargs = {
@@ -307,10 +316,9 @@ class QwenOmniAdapter(BaseModelAdapter):
         messages.append({"role": "user", "content": content})
         return messages
 
-    def _frames_to_pil(self, frames: torch.Tensor) -> list[Image.Image]:
+    def _frames_to_pil(self, frames: torch.Tensor, max_images: int = 4) -> list[Image.Image]:
         """Convert frames tensor (T, C, H, W) float32 [0,1] → list of PIL Images."""
         n_frames = frames.shape[0]
-        max_images = 4
         if n_frames <= max_images:
             indices = list(range(n_frames))
         else:

@@ -10,3 +10,9 @@ wheels/
 .venv
 data-slow/
 data-fast/
+
+# Raw video data (gigabytes; not for git)
+data/
+
+# Run logs
+*.log

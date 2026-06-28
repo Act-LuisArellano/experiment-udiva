@@ -1,0 +1,31 @@
+experiment:
+  type: anticipation
+
+model:
+  name: qwen_omni
+  checkpoint: "Qwen/Qwen2.5-Omni-7B"
+  weights_path: ""
+  quantization: "none"
+  load_kwargs:
+    profile: "server"
+
+data:
+  video_path: "../data/udiva_hhoi/GF/005013.mp4"
+  chunk_duration: 2.0
+  chunk_stride: 2.0
+  fps: 1.0
+  resize: [256, 256]
+
+execution:
+  backend: single_device
+
+output:
+  format: json
+  path: "../data-slow/results/gf_anticipation/exo/submission.json"
+
+extra:
+  # The official sampled windows double as the reference (participants->events).
+  anticipation_template_path: "../data-slow/samples_gt/anticipation_samples_gt.json"
+  anticipation_observation_seconds: 60
+  anticipation_num_frames: 32
+  anticipation_resize: 256

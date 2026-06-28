@@ -36,9 +36,17 @@ VERBAL_UTTERANCE_TYPES = [
 
 NONVERBAL_HIGHLEVEL_ACTIONS = [
     "imitate", "request", "demonstrate", "positive_acknowledgement", "negative_acknowledgement", "other_acknowledgement",
-    "open", "close", "assemble", "disassemble", "relocate", "select", "discard", "give", "receive", "correct", "take", "show", "play", "make_room", "organize", "prepare", "keep", "withdraw",
+    "open", "close", "assemble", "detach", "relocate", "select", "discard", "give", "receive", "correct", "take", "show", "play", "make_room", "organize", "prepare", "keep", "withdraw",
     "inspect_check", "draw_attention", "pay_attention", "verify",
     "search", "wait", "assist",
+]
+
+# Physical manipulation primitives. MUST match the GT vocabulary used by
+# compute_map.py (LOW_LEVEL_LABELS); free-form labels like "nod"/"smile" never
+# match GT and score zero.
+NONVERBAL_LOWLEVEL_ACTIONS = [
+    "pick_up", "place", "drop", "throw", "release", "move", "flip", "spread",
+    "pointing_at", "hold", "pass", "rotate", "other", "unclear",
 ]
 
 VERBAL_EVENT_KEYS = ("subject", "utterance_type", "target", "modifier", "score")
@@ -95,7 +103,8 @@ class RecognitionExperiment(BaseExperiment):
 
     def prepare_request(self, chunk: VideoChunk, config: ExperimentConfig) -> ModelRequest:
         category = self._get_category(config)
-        prompt = self._build_prompt(category=category, chunk=chunk)
+        subject = self._get_subject(config)
+        prompt = self._build_prompt(category=category, chunk=chunk, subject=subject)
         return ModelRequest(task="recognition", prompt_template=prompt)
 
     def postprocess(
@@ -106,6 +115,13 @@ class RecognitionExperiment(BaseExperiment):
     ) -> CanonicalPrediction:
         category = self._get_category(config)
         events = self._parse_events(raw.text or "", category=category)
+
+        # Egocentric single-subject mode: force the subject so the merge is
+        # unambiguous regardless of what the model wrote.
+        subject = self._get_subject(config)
+        if subject:
+            for event in events:
+                event["subject"] = subject
 
         return CanonicalPrediction(
             chunk_index=chunk.index,
@@ -161,7 +177,7 @@ class RecognitionExperiment(BaseExperiment):
 
         return predictions
 
-    def _build_prompt(self, category: str, chunk: VideoChunk) -> str:
+    def _build_prompt(self, category: str, chunk: VideoChunk, subject: str = "") -> str:
         base = (
             f"Watch this video segment carefully (from {chunk.start:.3f}s to {chunk.end:.3f}s). "
             f"Return a JSON object with a single key 'events'. The value must be a list of zero or more event objects. "
@@ -169,23 +185,47 @@ class RecognitionExperiment(BaseExperiment):
             f"If there are no events, return {{\"events\": []}}."
         )
 
+        # Subject instruction: egocentric single-subject mode when `subject` is set,
+        # otherwise the exocentric left/right grounding.
+        if subject:
+            subject_instruction = (
+                f"This is the first-person egocentric video recorded by {subject}. "
+                f"Report ONLY the events performed by {subject} themselves (the camera wearer), "
+                f"not the other person. Set every event's 'subject' field to {subject}. "
+            )
+        else:
+            subject_instruction = (
+                "Each event's 'subject' must be participant_a or participant_b, where "
+                "participant_a is the person on the LEFT of the video frame and "
+                "participant_b is the person on the RIGHT. "
+            )
+
         if category == "nonverbal":
             return (
                 f"{base} For each event use the fields: subject, highlevel_action, lowlevel_action, target, modifier, score. "
-                f"Allowed subject values include participant_a and participant_b. "
+                f"{subject_instruction}"
+                f"'lowlevel_action' is the concrete physical hand/object manipulation; "
+                f"'highlevel_action' is the higher-level intent of that manipulation. "
+                f"You MUST choose each value only from the lists below; do not invent new labels. "
+                f"Allowed lowlevel_action values: {', '.join(NONVERBAL_LOWLEVEL_ACTIONS)}. "
                 f"Allowed highlevel_action values: {', '.join(NONVERBAL_HIGHLEVEL_ACTIONS)}. "
                 f"Return JSON only."
             )
 
         return (
             f"{base} For each event use the fields: subject, utterance_type, target, modifier, score. "
-            f"Allowed subject values include participant_a and participant_b. "
+            f"{subject_instruction}"
+            f"You MUST choose 'utterance_type' only from the list below; do not invent new labels. "
             f"Allowed utterance_type values: {', '.join(VERBAL_UTTERANCE_TYPES)}. "
             f"Return JSON only."
         )
 
     def _get_category(self, config: ExperimentConfig) -> str:
         return str(config.extra.get("recognition_category", "verbal")).strip().lower() or "verbal"
+
+    def _get_subject(self, config: ExperimentConfig) -> str:
+        """Egocentric single-subject mode: '' (exocentric) or participant_a/b."""
+        return str(config.extra.get("recognition_subject", "")).strip().lower()
 
     def _get_video_id(self, config: ExperimentConfig) -> str:
         explicit_video_id = str(config.extra.get("recognition_video_id", "")).strip()

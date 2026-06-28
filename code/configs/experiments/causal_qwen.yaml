@@ -1,0 +1,30 @@
+experiment:
+  type: causal
+
+model:
+  name: qwen_omni
+  checkpoint: "Qwen/Qwen2.5-Omni-7B"
+  weights_path: ""
+  quantization: "none"
+  load_kwargs:
+    profile: "server"
+
+data:
+  video_path: "../data/udiva_hhoi/GF/005013.mp4"
+  chunk_duration: 2.0
+  chunk_stride: 2.0
+  fps: 1.0
+  resize: [320, 320]
+
+execution:
+  backend: single_device
+
+output:
+  format: json
+  path: "../data-slow/results/gf_causal/submission.json"
+
+extra:
+  causal_spec_path: "../data-slow/samples_gt/causal_samples_gt.json"
+  causal_lookback_seconds: 60
+  causal_num_frames: 32
+  causal_resize: 320
